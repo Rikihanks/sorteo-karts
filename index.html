@@ -243,6 +243,7 @@
           list.push(karts[Math.floor(Math.random() * karts.length)]);
         }
         list.push(realKart);
+        
         return list;
       }
 
@@ -283,16 +284,18 @@
         kartLists.push({ card, kartList, index: i });
       });
 
+      
+        window.scrollTo({
+          top: document.body.scrollHeight,
+          behavior: 'smooth'
+        });
+
       const totalFadeUpTime =
         nombres.length * fadeUpDelayPerItem + fadeUpDuration + delayAfterNames;
 
       setTimeout(() => {
         kartLists.forEach(({ card }) => card.classList.add("name-up"));
         kartLists.forEach(({ kartList }) => kartList.classList.add("animate"));
-        window.scrollTo({
-          top: document.body.scrollHeight,
-          behavior: 'smooth'
-        });
       }, totalFadeUpTime);
     }
 
