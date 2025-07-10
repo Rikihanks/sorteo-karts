@@ -99,20 +99,6 @@
       top: 0;
     }
 
-    .kart-list.animate {
-      animation: spin 4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-      animation-fill-mode: forwards;
-    }
-
-    @keyframes spin {
-      0% {
-        top: 0;
-      }
-      100% {
-        top: -58.5em;
-      }
-    }
-
     .kart-list div {
       height: 1.5em;
       line-height: 1.5em;
@@ -203,19 +189,29 @@
   <script>
     const boton = document.getElementById("sortearBtn");
 
+    // Fisher-Yates shuffle
+    function shuffle(array) {
+      const arr = array.slice();
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
     function sortear() {
       const nombres = document
         .getElementById("corredores")
         .value.trim()
         .split(/[\n,]+/)
-        .map((n) => n.trim())
-        .filter((n) => n);
+        .map(n => n.trim())
+        .filter(n => n);
       const karts = document
         .getElementById("karts")
         .value.trim()
         .split(",")
-        .map((k) => k.trim())
-        .filter((k) => k);
+        .map(k => k.trim())
+        .filter(k => k);
       const grid = document.getElementById("grid");
       grid.innerHTML = "";
 
@@ -234,7 +230,7 @@
       const fadeUpDelayPerItem = 150;
       const delayAfterNames = 2000;
 
-      const kartsShuffle = [...karts].sort(() => Math.random() - 0.5);
+      const kartsShuffle = shuffle(karts);
 
       function crearListaAnimada(karts, realKart) {
         const list = [];
@@ -243,7 +239,6 @@
           list.push(karts[Math.floor(Math.random() * karts.length)]);
         }
         list.push(realKart);
-        
         return list;
       }
 
@@ -256,7 +251,7 @@
 
         const nombreEl = document.createElement("div");
         nombreEl.className = "nombre";
-        nombreEl.textContent = `${nombre}`;
+        nombreEl.textContent = nombre;
 
         const slot = document.createElement("div");
         slot.className = "kart-slot";
@@ -284,18 +279,36 @@
         kartLists.push({ card, kartList, index: i });
       });
 
-      
-        window.scrollTo({
-          top: document.body.scrollHeight,
-          behavior: 'smooth'
-        });
+      window.scrollTo({
+        top: document.body.scrollHeight,
+        behavior: "smooth"
+      });
 
-      const totalFadeUpTime =
-        nombres.length * fadeUpDelayPerItem + fadeUpDuration + delayAfterNames;
+      const totalFadeUpTime = nombres.length * fadeUpDelayPerItem + fadeUpDuration + delayAfterNames;
 
       setTimeout(() => {
         kartLists.forEach(({ card }) => card.classList.add("name-up"));
-        kartLists.forEach(({ kartList }) => kartList.classList.add("animate"));
+
+        // Animación dinámica del scroll vertical en kartList
+        const animDuration = 4000;
+        kartLists.forEach(({ kartList }) => {
+          const itemsCount = kartList.children.length;
+          const itemHeight = kartList.children[0]?.offsetHeight || 24; // fallback en px
+
+          const finalTop = -itemHeight * (itemsCount - 1);
+
+          kartList.animate(
+            [
+              { top: "0px" },
+              { top: `${finalTop}px` }
+            ],
+            {
+              duration: animDuration,
+              easing: "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+              fill: "forwards"
+            }
+          );
+        });
       }, totalFadeUpTime);
     }
 
