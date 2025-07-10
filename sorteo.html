@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sorteo de Karts</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+      background: #cccccc /* gris claro */
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    .inputs-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    textarea,
+    input {
+      width: 100%;
+      height: 10em;
+      padding: 0.5rem;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+
+    button {
+      width: 100%;
+	  background-color: white;
+	  color: black;
+      margin-top: 1rem;
+      padding: 0.5rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 2s ease;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .card {
+      background: white;
+      color: #0077cc; /* texto azul */
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      min-height: 5em;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      transition: padding-top 0.5s ease;
+      opacity: 0;
+    }
+
+    .card.name-up {
+      padding-top: 0.3rem;
+      justify-content: flex-start;
+      min-height: 5em;
+    }
+
+    .nombre {
+      font-weight: bold;
+      color: black;
+      text-align: center;
+      font-size: 1.1rem;
+      transition: all 0.5s ease;
+    }
+
+    .card.name-up .nombre {
+      text-align: center;
+      font-size: 1.5rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .kart-slot {
+      margin-top: 0.5rem;
+      height: 1.5em;
+      font-size: 1.7rem;
+      overflow: hidden;
+      position: relative;
+      font-weight: bold;
+      text-align: center;
+      color: #0077cc; /* azul */
+    }
+
+    .kart-list {
+      position: absolute;
+      width: 100%;
+      top: 0;
+    }
+
+    .kart-list.animate {
+      animation: spin 4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+      animation-fill-mode: forwards;
+    }
+
+    @keyframes spin {
+      0% {
+        top: 0;
+      }
+      100% {
+        top: -58.5em;
+      }
+    }
+
+    .kart-list div {
+      height: 1.5em;
+      line-height: 1.5em;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .fade-up {
+      opacity: 0;
+      animation: fadeUp 0.6s ease forwards;
+    }
+  </style>
+</head>
+<body>
+  <h2>Sorteo</h2>
+
+  <div class="inputs-container">
+    <div>
+      <label>Corredores (separados por comas):</label>
+      <textarea
+        id="corredores"
+        placeholder="Ej: Ana&#10;Luis&#10;Carlos"
+      >Richard, Luis, Sergio, Valentina, Samuel, Sheila</textarea>
+    </div>
+
+    <div>
+      <label>Karts (separados por comas):</label>
+      <input
+        type="text"
+        id="karts"
+        placeholder="Ej: 1,2,3,4,5"
+        value="11, 22, 33, 44, 55, 66"
+      />
+    </div>
+  </div>
+
+  <button id="sortearBtn">Sortear</button>
+
+  <div class="grid" id="grid"></div>
+
+  <script>
+    const boton = document.getElementById("sortearBtn");
+
+    function sortear() {
+      const nombres = document
+        .getElementById("corredores")
+        .value.trim()
+        .split(/[\n,]+/)
+        .map((n) => n.trim())
+        .filter((n) => n);
+      const karts = document
+        .getElementById("karts")
+        .value.trim()
+        .split(",")
+        .map((k) => k.trim())
+        .filter((k) => k);
+      const grid = document.getElementById("grid");
+      grid.innerHTML = "";
+
+      if (nombres.length === 0 || karts.length === 0) {
+        alert("Debes introducir al menos un corredor y un kart");
+        return;
+      }
+
+      if (nombres.length > karts.length) {
+        alert("Hay más corredores que karts disponibles");
+        return;
+      }
+
+      const totalItems = 40;
+      const fadeUpDuration = 600;
+      const fadeUpDelayPerItem = 150;
+      const delayAfterNames = 2000;
+
+      const kartsShuffle = [...karts].sort(() => Math.random() - 0.5);
+
+      function crearListaAnimada(karts, realKart) {
+        const list = [];
+        list.push("");
+        for (let i = 0; i < totalItems - 2; i++) {
+          list.push(karts[Math.floor(Math.random() * karts.length)]);
+        }
+        list.push(realKart);
+        return list;
+      }
+
+      const kartLists = [];
+
+      nombres.forEach((nombre, i) => {
+        const card = document.createElement("div");
+        card.className = "card fade-up";
+        card.style.animationDelay = `${i * fadeUpDelayPerItem}ms`;
+
+        const nombreEl = document.createElement("div");
+        nombreEl.className = "nombre";
+        nombreEl.textContent = `${nombre}`;
+
+        const slot = document.createElement("div");
+        slot.className = "kart-slot";
+
+        const kartList = document.createElement("div");
+        kartList.className = "kart-list";
+
+        const kartAsignado = kartsShuffle[i];
+
+        console.log(`Corredor: ${nombre} — Kart asignado: ${kartAsignado}`);
+
+        const listaAnimada = crearListaAnimada(karts, kartAsignado);
+
+        listaAnimada.forEach((kart) => {
+          const item = document.createElement("div");
+          item.textContent = kart ? `🏎️ ${kart} 🏎️` : "";
+          kartList.appendChild(item);
+        });
+
+        slot.appendChild(kartList);
+        card.appendChild(nombreEl);
+        card.appendChild(slot);
+        grid.appendChild(card);
+
+        kartLists.push({ card, kartList, index: i });
+      });
+
+      const totalFadeUpTime =
+        nombres.length * fadeUpDelayPerItem + fadeUpDuration + delayAfterNames;
+
+      setTimeout(() => {
+        kartLists.forEach(({ card }) => card.classList.add("name-up"));
+        kartLists.forEach(({ kartList }) => kartList.classList.add("animate"));
+      }, totalFadeUpTime);
+    }
+
+    boton.addEventListener("click", () => {
+      boton.disabled = true;
+      sortear();
+      boton.disabled = false;
+    });
+  </script>
+</body>
+</html>
