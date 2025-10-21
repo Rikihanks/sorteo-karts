@@ -166,7 +166,7 @@
 
   <div class="inputs-container">
     <div>
-      <label>Corredores (separados por comas):</label>
+      <label>Corredores (separados por comas o nuevas líneas):</label>
       <textarea
         id="corredores"
         placeholder="Ej: Ana&#10;Luis&#10;Carlos"></textarea>
@@ -180,6 +180,12 @@
         placeholder="Ej: 1,2,3,4,5"
       />
     </div>
+  </div>
+
+  <div style="margin-top:1rem;">
+    <label>Historial (evita repetir karts por persona):</label>
+    <textarea id="historial" placeholder="Formato por línea: Nombre: kart1,kart2&#10Ejemplo: Ana: 1,3&#10Luis: 2"></textarea>
+    <small>Opcional: escribe una asignación por línea. Si usas formato CSV sin dos puntos, usa 'Nombre,kart1,kart2'.</small>
   </div>
 
   <button id="sortearBtn">Sortear</button>
@@ -199,6 +205,46 @@
       return arr;
     }
 
+    // Parse history textarea into Map<name, Set<karts>>
+    function parseHistory() {
+      const raw = document.getElementById("historial").value.trim();
+      const map = new Map();
+      if (!raw) return map;
+      const lines = raw.split(/\r?\n/);
+      lines.forEach((line) => {
+        line = line.trim();
+        if (!line) return;
+        let name = "";
+        let kartParts = [];
+        if (line.includes(":")) {
+          const parts = line.split(":");
+          name = parts.shift().trim();
+          kartParts = parts.join(":").split(",").map(s => s.trim()).filter(Boolean);
+        } else {
+          // fallback to comma-separated where first is name
+          const parts = line.split(",").map(s => s.trim()).filter(Boolean);
+          if (parts.length === 0) return;
+          name = parts.shift();
+          kartParts = parts;
+        }
+        if (name) {
+          map.set(name, new Set(kartParts));
+        }
+      });
+      return map;
+    }
+
+    function crearListaAnimada(karts, realKart) {
+      const totalItems = 40;
+      const list = [];
+      list.push("");
+      for (let i = 0; i < totalItems - 2; i++) {
+        list.push(karts[Math.floor(Math.random() * karts.length)]);
+      }
+      list.push(realKart);
+      return list;
+    }
+
     function sortear() {
       const nombres = document
         .getElementById("corredores")
@@ -212,6 +258,7 @@
         .split(",")
         .map(k => k.trim())
         .filter(k => k);
+      const history = parseHistory(); // Map of previous assignments per person
       const grid = document.getElementById("grid");
       grid.innerHTML = "";
 
@@ -225,25 +272,32 @@
         return;
       }
 
-      const totalItems = 40;
+      // We'll assign unique karts for this draw, and avoid assigning a kart that a person had before when possible.
+      let availableKarts = shuffle(karts.slice());
+
+      // Pre-check: see if it's possible to avoid repeats for everyone
+      // (This is a heuristic check; exact feasibility is a matching problem, but we keep it simple)
+      const cannotAvoidFor = [];
+      nombres.forEach((nombre) => {
+        const prevSet = history.get(nombre);
+        if (prevSet && prevSet.size >= karts.length) {
+          cannotAvoidFor.push(nombre);
+        }
+      });
+      if (cannotAvoidFor.length > 0) {
+        const names = cannotAvoidFor.join(", ");
+        if (!confirm(`No hay suficientes karts distintos para evitar repetir con: ${names}. ¿Deseas continuar permitiendo repeticiones?`)) {
+          return;
+        }
+      }
+
       const fadeUpDuration = 600;
       const fadeUpDelayPerItem = 150;
       const delayAfterNames = 2000;
 
-      const kartsShuffle = shuffle(karts);
-
-      function crearListaAnimada(karts, realKart) {
-        const list = [];
-        list.push("");
-        for (let i = 0; i < totalItems - 2; i++) {
-          list.push(karts[Math.floor(Math.random() * karts.length)]);
-        }
-        list.push(realKart);
-        return list;
-      }
-
       const kartLists = [];
 
+      // For deterministic but fair assignment, iterate nombres in order and pick first available kart that is NOT in their history.
       nombres.forEach((nombre, i) => {
         const card = document.createElement("div");
         card.className = "card fade-up";
@@ -259,7 +313,27 @@
         const kartList = document.createElement("div");
         kartList.className = "kart-list";
 
-        const kartAsignado = kartsShuffle[i];
+        // Find a kart for this person that is not in their history
+        const prevSet = history.get(nombre);
+        let kartAsignado = null;
+        if (availableKarts.length === 0) {
+          // Shouldn't happen because we checked counts, but guard anyway
+          console.warn("No quedan karts disponibles.");
+        } else {
+          for (let j = 0; j < availableKarts.length; j++) {
+            const candidate = availableKarts[j];
+            if (!prevSet || !prevSet.has(candidate)) {
+              kartAsignado = candidate;
+              availableKarts.splice(j, 1);
+              break;
+            }
+          }
+          // If we couldn't find a kart that avoids repeat, just take the first available (still unique for this draw)
+          if (!kartAsignado) {
+            kartAsignado = availableKarts.shift();
+            console.warn(`No fue posible evitar repetir kart para ${nombre}. Se asigna ${kartAsignado} igualmente.`);
+          }
+        }
 
         console.log(`Corredor: ${nombre} — Kart asignado: ${kartAsignado}`);
 
@@ -314,8 +388,14 @@
 
     boton.addEventListener("click", () => {
       boton.disabled = true;
-      sortear();
-      boton.disabled = false;
+      try {
+        sortear();
+      } finally {
+        // small delay to avoid accidental double-click interfering with UI
+        setTimeout(() => {
+          boton.disabled = false;
+        }, 250);
+      }
     });
   </script>
 </body>
