@@ -32,14 +32,34 @@
     }
 
     button {
-      width: 100%;
       background-color: white;
       color: black;
       margin-top: 1rem;
       padding: 0.5rem;
       font-size: 1rem;
       cursor: pointer;
-      transition: background-color 2s ease;
+      transition: background-color 0.2s ease;
+      border: 1px solid #bbb;
+      border-radius: 6px;
+    }
+
+    /* Top row (copiar / limpiar) */
+    .buttons-top {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    .buttons-top button {
+      flex: 1;
+      min-width: 120px;
+    }
+
+    /* Bottom row (sortear) */
+    .buttons-bottom {
+      margin-top: 0.5rem;
+    }
+    .buttons-bottom button {
+      width: 100%;
     }
 
     .grid {
@@ -158,6 +178,14 @@
         height: 2em;
         line-height: 2em;
       }
+
+      /* En móvil apilar los botones top y mantener el botón sortear debajo */
+      .buttons-top {
+        flex-direction: column;
+      }
+      .buttons-top button {
+        min-width: 0;
+      }
     }
   </style>
 </head>
@@ -188,12 +216,26 @@
     <small>Opcional: escribe una asignación por línea. Si usas formato CSV sin dos puntos, usa 'Nombre,kart1,kart2'.</small>
   </div>
 
-  <button id="sortearBtn">Sortear</button>
+  <!-- Primera fila: copiar / limpiar -->
+  <div class="buttons-top">
+    <button id="copyHistBtn">Copiar asignaciones al historial</button>
+    <button id="clearHistBtn">Limpiar historial</button>
+  </div>
+
+  <!-- Segunda fila: sortear -->
+  <div class="buttons-bottom">
+    <button id="sortearBtn">Sortear</button>
+  </div>
 
   <div class="grid" id="grid"></div>
 
   <script>
     const boton = document.getElementById("sortearBtn");
+    const copyHistBtn = document.getElementById("copyHistBtn");
+    const clearHistBtn = document.getElementById("clearHistBtn");
+
+    // Mantiene la última asignación realizada: array de { name, kart }
+    let lastAssignments = [];
 
     // Fisher-Yates shuffle
     function shuffle(array) {
@@ -261,6 +303,7 @@
       const history = parseHistory(); // Map of previous assignments per person
       const grid = document.getElementById("grid");
       grid.innerHTML = "";
+      lastAssignments = []; // reset last assignments
 
       if (nombres.length === 0 || karts.length === 0) {
         alert("Debes introducir al menos un corredor y un kart");
@@ -335,6 +378,9 @@
           }
         }
 
+        // Guarda la asignación para el botón de copiar historial
+        lastAssignments.push({ name: nombre, kart: kartAsignado });
+
         console.log(`Corredor: ${nombre} — Kart asignado: ${kartAsignado}`);
 
         const listaAnimada = crearListaAnimada(karts, kartAsignado);
@@ -385,6 +431,32 @@
         });
       }, totalFadeUpTime);
     }
+
+    // Copia las últimas asignaciones al textarea 'historial'
+    copyHistBtn.addEventListener('click', () => {
+      if (!lastAssignments || lastAssignments.length === 0) {
+        alert('No hay asignaciones recientes. Haz clic en "Sortear" primero.');
+        return;
+      }
+      // Formato: Nombre: kart  (una asignación por línea)
+      const lines = lastAssignments.map(a => `${a.name}: ${a.kart}`);
+      document.getElementById('historial').value = lines.join('\n');
+      // feedback visual
+      alert('Historial actualizado con las asignaciones actuales.');
+    });
+
+    // Botón para limpiar historial con confirmación
+    clearHistBtn.addEventListener('click', () => {
+      const current = document.getElementById('historial').value;
+      if (!current) {
+        alert('El historial ya está vacío.');
+        return;
+      }
+      if (confirm('¿Seguro que quieres limpiar el historial? Esta acción eliminará todo el contenido del textarea.')) {
+        document.getElementById('historial').value = '';
+        alert('Historial limpiado.');
+      }
+    });
 
     boton.addEventListener("click", () => {
       boton.disabled = true;
