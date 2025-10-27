@@ -237,7 +237,7 @@
     // Mantiene la última asignación realizada: array de { name, kart }
     let lastAssignments = [];
 
-    // Fisher-Yates shuffle
+    // Fisher-Yates shuffle (devuelve nueva array mezclada)
     function shuffle(array) {
       const arr = array.slice();
       for (let i = arr.length - 1; i > 0; i--) {
@@ -247,11 +247,13 @@
       return arr;
     }
 
-    // Parse history textarea into Map<name, Set<karts>>
+    // Parse history textarea into:
+    // { map: Map<normalizedName, Set<normalizedKart>>, originals: Map<normalizedName, originalName> }
     function parseHistory() {
       const raw = document.getElementById("historial").value.trim();
       const map = new Map();
-      if (!raw) return map;
+      const originals = new Map();
+      if (!raw) return { map, originals };
       const lines = raw.split(/\r?\n/);
       lines.forEach((line) => {
         line = line.trim();
@@ -270,10 +272,81 @@
           kartParts = parts;
         }
         if (name) {
-          map.set(name, new Set(kartParts));
+          const normName = name.toLowerCase().trim();
+          originals.set(normName, name);
+          // normalize kart values too (trim + toLowerCase) so comparisons are consistent
+          const normKarts = new Set(kartParts.map(k => k.trim().toLowerCase()).filter(Boolean));
+          map.set(normName, normKarts);
         }
       });
-      return map;
+      return { map, originals };
+    }
+
+    // Attempt to find a perfect matching (assignment of unique karts to every name)
+    // Returns an object mapping name -> kart (using original kart strings) if possible, otherwise null.
+    // This version adds randomness by shuffling both kart order and the order in which names are attempted,
+    // and also shuffles adjacency lists so multiple possible perfect matchings are chosen randomly across executions.
+    function findPerfectMatching(nombres, karts, history) {
+      const n = nombres.length;
+      const m = karts.length;
+
+      // Random kart order and random name order to introduce randomness in matching selection
+      const kartOrder = shuffle(Array.from({ length: m }, (_, i) => i));
+      const nameOrder = shuffle(Array.from({ length: n }, (_, i) => i));
+
+      // Build adjacency: each nombre index has list of kart indices allowed (kart not in their history)
+      const adj = Array.from({ length: n }, () => []);
+      for (let i = 0; i < n; i++) {
+        const nameNorm = nombres[i].toLowerCase().trim();
+        const prevSet = history.get(nameNorm);
+        // iterate kartOrder to produce adjacency in random order
+        kartOrder.forEach(jIdx => {
+          const kartNorm = karts[jIdx].trim().toLowerCase();
+          if (!prevSet || !prevSet.has(kartNorm)) {
+            adj[i].push(jIdx);
+          }
+        });
+        // further randomize adjacency list (just in case)
+        adj[i] = shuffle(adj[i]);
+      }
+
+      // Quick fail: if any node has no edges, no perfect matching avoiding repeats exists.
+      for (let i = 0; i < n; i++) {
+        if (adj[i].length === 0) return null;
+      }
+
+      // Kuhn algorithm (DFS-based augmenting path). matchKart[j] = i (name index) or -1
+      const matchKart = new Array(m).fill(-1);
+
+      function dfs(u, seen) {
+        for (const v of adj[u]) {
+          if (seen[v]) continue;
+          seen[v] = true;
+          if (matchKart[v] === -1 || dfs(matchKart[v], seen)) {
+            matchKart[v] = u;
+            return true;
+          }
+        }
+        return false;
+      }
+
+      // Try to find augmenting paths in a random name order
+      for (const u of nameOrder) {
+        const seen = new Array(m).fill(false);
+        if (!dfs(u, seen)) {
+          return null; // cannot match this u -> no perfect matching
+        }
+      }
+
+      // Build mapping name -> kart (original kart string)
+      const result = {};
+      for (let j = 0; j < m; j++) {
+        const u = matchKart[j];
+        if (u !== -1) {
+          result[nombres[u]] = karts[j];
+        }
+      }
+      return result;
     }
 
     function crearListaAnimada(karts, realKart) {
@@ -300,7 +373,7 @@
         .split(",")
         .map(k => k.trim())
         .filter(k => k);
-      const history = parseHistory(); // Map of previous assignments per person
+      const { map: history, originals } = parseHistory(); // Map of previous assignments per normalized name
       const grid = document.getElementById("grid");
       grid.innerHTML = "";
       lastAssignments = []; // reset last assignments
@@ -315,24 +388,35 @@
         return;
       }
 
-      // We'll assign unique karts for this draw, and avoid assigning a kart that a person had before when possible.
-      let availableKarts = shuffle(karts.slice());
+      // Try to compute a perfect matching that avoids repeats (if possible)
+      const perfectMapping = findPerfectMatching(nombres, karts, history);
 
-      // Pre-check: see if it's possible to avoid repeats for everyone
-      // (This is a heuristic check; exact feasibility is a matching problem, but we keep it simple)
-      const cannotAvoidFor = [];
-      nombres.forEach((nombre) => {
-        const prevSet = history.get(nombre);
-        if (prevSet && prevSet.size >= karts.length) {
-          cannotAvoidFor.push(nombre);
-        }
-      });
-      if (cannotAvoidFor.length > 0) {
-        const names = cannotAvoidFor.join(", ");
-        if (!confirm(`No hay suficientes karts distintos para evitar repetir con: ${names}. ¿Deseas continuar permitiendo repeticiones?`)) {
-          return;
+      // If perfectMapping is null, check if it's because some persons have so many previous karts that it's impossible.
+      if (!perfectMapping) {
+        // Pre-check: see if it's possible to avoid repeats for everyone (heuristic)
+        const cannotAvoidFor = [];
+        nombres.forEach((nombre) => {
+          const prevSet = history.get(nombre.toLowerCase().trim());
+          if (prevSet && prevSet.size >= karts.length) {
+            const displayName = originals.get(nombre.toLowerCase().trim()) || nombre;
+            cannotAvoidFor.push(displayName);
+          }
+        });
+        if (cannotAvoidFor.length > 0) {
+          const names = cannotAvoidFor.join(", ");
+          if (!confirm(`No hay suficientes karts distintos para evitar repetir con: ${names}. ¿Deseas continuar permitiendo repeticiones?`)) {
+            return;
+          }
+        } else {
+          // No obvious single-person blockage, but global perfect matching still might be impossible due to conflicts across people.
+          if (!confirm("No ha sido posible encontrar una asignación global que evite todas las repeticiones (debido a conflictos entre corredores). ¿Deseas continuar con una asignación que minimice repeticiones en orden (greedy)?")) {
+            return;
+          }
         }
       }
+
+      // We'll assign unique karts for this draw.
+      let availableKarts = shuffle(karts.slice());
 
       const fadeUpDuration = 600;
       const fadeUpDelayPerItem = 150;
@@ -340,7 +424,9 @@
 
       const kartLists = [];
 
-      // For deterministic but fair assignment, iterate nombres in order and pick first available kart that is NOT in their history.
+      // For deterministic but fair assignment:
+      // - If perfectMapping exists, use it (guaranteed unique and avoids repeats).
+      // - Otherwise fallback to greedy: iterate nombres in order and pick first available kart not in their history.
       nombres.forEach((nombre, i) => {
         const card = document.createElement("div");
         card.className = "card fade-up";
@@ -356,25 +442,35 @@
         const kartList = document.createElement("div");
         kartList.className = "kart-list";
 
-        // Find a kart for this person that is not in their history
-        const prevSet = history.get(nombre);
+        // Determine kartAsignado
         let kartAsignado = null;
-        if (availableKarts.length === 0) {
-          // Shouldn't happen because we checked counts, but guard anyway
-          console.warn("No quedan karts disponibles.");
+
+        if (perfectMapping && Object.prototype.hasOwnProperty.call(perfectMapping, nombre)) {
+          // Use mapping result
+          kartAsignado = perfectMapping[nombre];
+          // remove from availableKarts if present so fallback logic behaves consistently
+          const idx = availableKarts.indexOf(kartAsignado);
+          if (idx !== -1) availableKarts.splice(idx, 1);
         } else {
-          for (let j = 0; j < availableKarts.length; j++) {
-            const candidate = availableKarts[j];
-            if (!prevSet || !prevSet.has(candidate)) {
-              kartAsignado = candidate;
-              availableKarts.splice(j, 1);
-              break;
+          // Greedy fallback
+          const prevSet = history.get(nombre.toLowerCase().trim());
+          if (availableKarts.length === 0) {
+            console.warn("No quedan karts disponibles.");
+          } else {
+            for (let j = 0; j < availableKarts.length; j++) {
+              const candidate = availableKarts[j];
+              const candidateNorm = candidate.trim().toLowerCase();
+              if (!prevSet || !prevSet.has(candidateNorm)) {
+                kartAsignado = candidate;
+                availableKarts.splice(j, 1);
+                break;
+              }
             }
-          }
-          // If we couldn't find a kart that avoids repeat, just take the first available (still unique for this draw)
-          if (!kartAsignado) {
-            kartAsignado = availableKarts.shift();
-            console.warn(`No fue posible evitar repetir kart para ${nombre}. Se asigna ${kartAsignado} igualmente.`);
+            // If we couldn't find a kart that avoids repeat (and no perfectMapping existed), just take the first available
+            if (!kartAsignado) {
+              kartAsignado = availableKarts.shift();
+              console.warn(`No fue posible evitar repetir kart para ${nombre}. Se asigna ${kartAsignado} igualmente.`);
+            }
           }
         }
 
