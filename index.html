@@ -3,602 +3,320 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sorteo de Karts</title>
+  <title>Grand Prix Sorteo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Russo+One&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  
   <style>
-    /* Background image + blur implemented via pseudo-elements so content stays accessible */
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --accent: #3b82f6; /* Azul eléctrico */
+      --accent-hover: #2563eb;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --danger: #ef4444;
+      --success: #10b981;
+      --glow: 0 0 15px rgba(59, 130, 246, 0.5);
+    }
+
+    * {
+      box-sizing: border-box;
+      outline: none;
+    }
+
     body {
-      font-family: sans-serif;
+      font-family: 'Montserrat', sans-serif;
+      margin: 0;
       padding: 2rem;
-      background-color: #cccccc; /* fallback color */
-      position: relative;
+      background-color: var(--bg-color);
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 20%),
+        radial-gradient(circle at 90% 80%, rgba(239, 68, 68, 0.15) 0%, transparent 20%);
+      color: var(--text-main);
       min-height: 100vh;
-      overflow-x: hidden;
-    }
-
-    /* Blurred background image (requested) */
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      background-image: url("https://wallpaperaccess.com/full/9203281.jpg");
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      /* Blur + slight darkening for contrast */
-      filter: blur(8px) brightness(0.6);
-      transform: scale(1.03); /* avoid edges showing through when blurred */
-      z-index: -2;
-      pointer-events: none;
-    }
-
-    /* Semi-transparent overlay to improve text contrast */
-    body::after {
-      content: "";
-      position: fixed;
-      inset: 0;
-      background: rgba(255, 255, 255, 0.18); /* light overlay; adjust to taste (use rgba(0,0,0,0.3) for darker) */
-      z-index: -1;
-      pointer-events: none;
     }
 
     h2 {
+      font-family: 'Russo One', sans-serif;
       text-align: center;
+      font-size: 3rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 2rem;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      background: linear-gradient(to right, #fff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
-    .inputs-container {
+    /* Layout Containers */
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .panel {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+
+    .inputs-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-      margin-top: 1rem;
+      gap: 1.5rem;
     }
 
-    textarea,
-    input {
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    textarea, input[type="text"] {
       width: 100%;
-      height: 7em;
-      padding: 0.5rem;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 1rem;
+      color: white;
+      font-family: 'Montserrat', sans-serif;
       font-size: 1rem;
-      box-sizing: border-box;
+      transition: all 0.3s ease;
+      resize: vertical;
+    }
+
+    textarea:focus, input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+
+    #corredores { height: 120px; }
+    #karts { height: 50px; }
+    #historial { height: 80px; font-family: monospace; font-size: 0.9rem; color: #a5f3fc; }
+
+    small {
+      display: block;
+      margin-top: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    /* Buttons */
+    .btn-group {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1.5rem;
     }
 
     button {
-      background-color: white;
-      color: black;
-      margin-top: 1rem;
-      padding: 0.5rem;
+      border: none;
+      border-radius: 8px;
+      padding: 1rem 1.5rem;
+      font-family: 'Russo One', sans-serif;
       font-size: 1rem;
       cursor: pointer;
-      transition: background-color 0.2s ease;
-      border: 1px solid #bbb;
-      border-radius: 6px;
-    }
-
-    /* Top row (copiar / limpiar) */
-    .buttons-top {
+      transition: transform 0.2s, box-shadow 0.2s;
       display: flex;
+      align-items: center;
+      justify-content: center;
       gap: 0.5rem;
-      margin-top: 1rem;
-    }
-    .buttons-top button {
-      flex: 1;
-      min-width: 120px;
+      text-transform: uppercase;
     }
 
-    /* Bottom row (sortear) */
-    .buttons-bottom {
-      margin-top: 0.5rem;
-    }
-    .buttons-bottom button {
+    button:active { transform: scale(0.98); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+      color: white;
       width: 100%;
+      font-size: 1.2rem;
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
     }
 
+    .btn-primary:hover {
+      filter: brightness(1.1);
+      box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+    }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: var(--text-main);
+      flex: 1;
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.2); }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+      flex: 1;
+    }
+    .btn-danger:hover { background: rgba(239, 68, 68, 0.3); }
+
+    /* Results Grid */
     .grid {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 1rem;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 1.5rem;
       margin-top: 2rem;
     }
 
     .card {
-      background: rgba(255,255,255,0.9);
-      color: #0077cc; /* texto azul */
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-      min-height: 5em;
+      background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 1rem;
       display: flex;
       flex-direction: column;
+      align-items: center;
       justify-content: center;
+      min-height: 140px;
       position: relative;
       overflow: hidden;
-      transition: padding-top 0.5s ease;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 4px;
+      background: var(--accent);
       opacity: 0;
+      transition: opacity 0.3s;
     }
 
     .card.name-up {
-      justify-content: flex-start;
-      min-height: 5em;
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+      border-color: var(--accent);
     }
+    
+    .card.name-up::before { opacity: 1; }
 
     .nombre {
-      font-weight: bold;
-      color: black;
-      text-align: center;
+      font-weight: 700;
       font-size: 1.1rem;
-      transition: all 0.5s ease;
-    }
-
-    .card.name-up .nombre {
+      color: var(--text-main);
+      z-index: 2;
+      margin-bottom: 0.5rem;
       text-align: center;
-      font-size: 1.5rem;
     }
 
+    /* Slot Machine Window */
     .kart-slot {
-      margin-top: 0.5rem;
-      height: 1.5em;
-      font-size: 1.7rem;
-      overflow: hidden;
+      height: 60px; /* Altura visible */
+      width: 100%;
+      background: #000;
+      border-radius: 6px;
+      border: 1px solid #334155;
       position: relative;
-      font-weight: bold;
-      text-align: center;
-      color: #0077cc; /* azul */
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      box-shadow: inset 0 0 10px #000;
+    }
+    
+    /* Gradiente de sombra interna para efecto 3D */
+    .kart-slot::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.8) 100%);
+      pointer-events: none;
+      z-index: 5;
     }
 
     .kart-list {
       position: absolute;
       width: 100%;
       top: 0;
+      text-align: center;
     }
 
     .kart-list div {
-      height: 1.5em;
-      line-height: 1.5em;
+      height: 60px; /* Debe coincidir con .kart-slot */
+      line-height: 60px;
+      font-family: 'Russo One', sans-serif;
+      font-size: 1.8rem;
+      color: var(--accent);
+      text-shadow: 0 0 10px rgba(59, 130, 246, 0.7);
     }
 
     @keyframes fadeUp {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     .fade-up {
       opacity: 0;
-      animation: fadeUp 0.6s ease forwards;
+      animation: fadeUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
     }
 
-    /* Ajustes para móvil */
+    /* Mobile Responsive */
     @media (max-width: 600px) {
-      body {
-        padding: 1rem;
-      }
-      /* slightly reduce blur on small screens for performance/readability */
-      body::before {
-        filter: blur(6px) brightness(0.7);
-      }
-      .inputs-container {
-        grid-template-columns: 1fr;
-      }
-      textarea,
-      input {
-        height: 5em;
-        font-size: 1.2rem;
-      }
-      button {
-        font-size: 1.2rem;
-        padding: 0.75rem;
-      }
-      .grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 0.75rem;
-        margin-top: 1.5rem;
-      }
-      .card {
-        min-height: 5em;
-      }
-      .nombre {
-        font-size: 1.3rem;
-      }
-      .card.name-up .nombre {
-        font-size: 1.6rem;
-      }
-      .kart-slot {
-        font-size: 2rem;
-        height: 2em;
-      }
-      .kart-list div {
-        height: 2em;
-        line-height: 2em;
-      }
-
-      /* En móvil apilar los botones top y mantener el botón sortear debajo */
-      .buttons-top {
-        flex-direction: column;
-      }
-      .buttons-top button {
-        min-width: 0;
-      }
+      body { padding: 1rem; }
+      h2 { font-size: 2rem; }
+      .inputs-row { grid-template-columns: 1fr; gap: 1rem; }
+      .btn-group { flex-direction: column; }
+      .card { min-height: 120px; }
+      .grid { grid-template-columns: repeat(2, 1fr); gap: 0.8rem; }
+      .kart-slot, .kart-list div { height: 50px; line-height: 50px; font-size: 1.4rem; }
+      .nombre { font-size: 0.9rem; }
     }
   </style>
 </head>
 <body>
-  <h2>Sorteo</h2>
 
-  <div class="inputs-container">
-    <div>
-      <label>Corredores (separados por comas o nuevas líneas):</label>
-      <textarea
-        id="corredores"
-        placeholder="Ej: Ana&#10;Luis&#10;Carlos"></textarea>
+<div class="container">
+  <h2><i class="fa-solid fa-flag-checkered"></i> Sorteo GP</h2>
+
+  <div class="panel">
+    <div class="inputs-row">
+      <div>
+        <label><i class="fa-solid fa-users"></i> Pilotos</label>
+        <textarea id="corredores" placeholder="Ej: Alonso&#10;Sainz&#10;Verstappen"></textarea>
+      </div>
+
+      <div style="display:flex; flex-direction:column;">
+        <label><i class="fa-solid fa-car-side"></i> Karts Disponibles</label>
+        <input type="text" id="karts" placeholder="Ej: 1, 2, 3, 4, 5, 6" />
+        
+        <div style="margin-top: auto; padding-top:1rem;">
+             <label><i class="fa-solid fa-clipboard-list"></i> Historial / Restricciones</label>
+            <textarea id="historial" placeholder="Nombre: kart1, kart2 (evita repetir)"></textarea>
+        </div>
+      </div>
     </div>
+    
+    <small><i class="fa-solid fa-circle-info"></i> El sistema asignará karts intentando no repetir los que estén en el historial.</small>
 
-    <div>
-      <label>Karts (separados por comas):</label>
-      <input
-        type="text"
-        id="karts"
-        placeholder="Ej: 1,2,3,4,5"
-      />
+    <div class="btn-group">
+      <button id="copyHistBtn" class="btn-secondary" title="Guardar resultado actual en historial">
+        <i class="fa-regular fa-copy"></i> Copiar al Historial
+      </button>
+      <button id="clearHistBtn" class="btn-danger" title="Borrar todo el historial">
+        <i class="fa-solid fa-trash-can"></i> Limpiar
+      </button>
     </div>
   </div>
 
-  <div style="margin-top:1rem;">
-    <label>Historial (evita repetir karts por persona):</label>
-    <textarea id="historial" placeholder="Formato por línea: Nombre: kart1,kart2&#10Ejemplo: Ana: 1,3&#10Luis: 2"></textarea>
-    <small>Opcional: escribe una asignación por línea. Si usas formato CSV sin dos puntos, usa 'Nombre,kart1,kart2'.</small>
-  </div>
-
-  <!-- Primera fila: copiar / limpiar -->
-  <div class="buttons-top">
-    <button id="copyHistBtn">Copiar asignaciones al historial</button>
-    <button id="clearHistBtn">Limpiar historial</button>
-  </div>
-
-  <!-- Segunda fila: sortear -->
-  <div class="buttons-bottom">
-    <button id="sortearBtn">Sortear</button>
-  </div>
+  <button id="sortearBtn" class="btn-primary">
+    <i class="fa-solid fa-shuffle"></i> INICIAR SORTEO
+  </button>
 
   <div class="grid" id="grid"></div>
+</div>
 
-  <script>
-    const boton = document.getElementById("sortearBtn");
-    const copyHistBtn = document.getElementById("copyHistBtn");
-    const clearHistBtn = document.getElementById("clearHistBtn");
+<script src="script.js"></script>
 
-    // Mantiene la última asignación realizada: array de { name, kart }
-    let lastAssignments = [];
-
-    // Fisher-Yates shuffle (devuelve nueva array mezclada)
-    function shuffle(array) {
-      const arr = array.slice();
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-      return arr;
-    }
-
-    // Parse history textarea into:
-    // { map: Map<normalizedName, Set<normalizedKart>>, originals: Map<normalizedName, originalName> }
-    function parseHistory() {
-      const raw = document.getElementById("historial").value.trim();
-      const map = new Map();
-      const originals = new Map();
-      if (!raw) return { map, originals };
-      const lines = raw.split(/\r?\n/);
-      lines.forEach((line) => {
-        line = line.trim();
-        if (!line) return;
-        let name = "";
-        let kartParts = [];
-        if (line.includes(":")) {
-          const parts = line.split(":");
-          name = parts.shift().trim();
-          kartParts = parts.join(":").split(",").map(s => s.trim()).filter(Boolean);
-        } else {
-          // fallback to comma-separated where first is name
-          const parts = line.split(",").map(s => s.trim()).filter(Boolean);
-          if (parts.length === 0) return;
-          name = parts.shift();
-          kartParts = parts;
-        }
-        if (name) {
-          const normName = name.toLowerCase().trim();
-          originals.set(normName, name);
-          // normalize kart values too (trim + toLowerCase) so comparisons are consistent
-          const normKarts = new Set(kartParts.map(k => k.trim().toLowerCase()).filter(Boolean));
-          map.set(normName, normKarts);
-        }
-      });
-      return { map, originals };
-    }
-
-    // Attempt to find a perfect matching (assignment of unique karts to every name)
-    // Returns an object mapping name -> kart (using original kart strings) if possible, otherwise null.
-    // This version adds randomness by shuffling both kart order and the order in which names are attempted,
-    // and also shuffles adjacency lists so multiple possible perfect matchings are chosen randomly across executions.
-    function findPerfectMatching(nombres, karts, history) {
-      const n = nombres.length;
-      const m = karts.length;
-
-      // Random kart order and random name order to introduce randomness in matching selection
-      const kartOrder = shuffle(Array.from({ length: m }, (_, i) => i));
-      const nameOrder = shuffle(Array.from({ length: n }, (_, i) => i));
-
-      // Build adjacency: each nombre index has list of kart indices allowed (kart not in their history)
-      const adj = Array.from({ length: n }, () => []);
-      for (let i = 0; i < n; i++) {
-        const nameNorm = nombres[i].toLowerCase().trim();
-        const prevSet = history.get(nameNorm);
-        // iterate kartOrder to produce adjacency in random order
-        kartOrder.forEach(jIdx => {
-          const kartNorm = karts[jIdx].trim().toLowerCase();
-          if (!prevSet || !prevSet.has(kartNorm)) {
-            adj[i].push(jIdx);
-          }
-        });
-        // further randomize adjacency list (just in case)
-        adj[i] = shuffle(adj[i]);
-      }
-
-      // Quick fail: if any node has no edges, no perfect matching avoiding repeats exists.
-      for (let i = 0; i < n; i++) {
-        if (adj[i].length === 0) return null;
-      }
-
-      // Kuhn algorithm (DFS-based augmenting path). matchKart[j] = i (name index) or -1
-      const matchKart = new Array(m).fill(-1);
-
-      function dfs(u, seen) {
-        for (const v of adj[u]) {
-          if (seen[v]) continue;
-          seen[v] = true;
-          if (matchKart[v] === -1 || dfs(matchKart[v], seen)) {
-            matchKart[v] = u;
-            return true;
-          }
-        }
-        return false;
-      }
-
-      // Try to find augmenting paths in a random name order
-      for (const u of nameOrder) {
-        const seen = new Array(m).fill(false);
-        if (!dfs(u, seen)) {
-          return null; // cannot match this u -> no perfect matching
-        }
-      }
-
-      // Build mapping name -> kart (original kart string)
-      const result = {};
-      for (let j = 0; j < m; j++) {
-        const u = matchKart[j];
-        if (u !== -1) {
-          result[nombres[u]] = karts[j];
-        }
-      }
-      return result;
-    }
-
-    function crearListaAnimada(karts, realKart) {
-      const totalItems = 40;
-      const list = [];
-      list.push("");
-      for (let i = 0; i < totalItems - 2; i++) {
-        list.push(karts[Math.floor(Math.random() * karts.length)]);
-      }
-      list.push(realKart);
-      return list;
-    }
-
-    function sortear() {
-      const nombres = document
-        .getElementById("corredores")
-        .value.trim()
-        .split(/[\n,]+/)
-        .map(n => n.trim())
-        .filter(n => n);
-      const karts = document
-        .getElementById("karts")
-        .value.trim()
-        .split(",")
-        .map(k => k.trim())
-        .filter(k => k);
-      const { map: history, originals } = parseHistory(); // Map of previous assignments per normalized name
-      const grid = document.getElementById("grid");
-      grid.innerHTML = "";
-      lastAssignments = []; // reset last assignments
-
-      if (nombres.length === 0 || karts.length === 0) {
-        alert("Debes introducir al menos un corredor y un kart");
-        return;
-      }
-
-      if (nombres.length > karts.length) {
-        alert("Hay más corredores que karts disponibles");
-        return;
-      }
-
-      // Try to compute a perfect matching that avoids repeats (if possible)
-      const perfectMapping = findPerfectMatching(nombres, karts, history);
-
-      // If perfectMapping is null, check if it's because some persons have so many previous karts that it's impossible.
-      if (!perfectMapping) {
-        // Pre-check: see if it's possible to avoid repeats for everyone (heuristic)
-        const cannotAvoidFor = [];
-        nombres.forEach((nombre) => {
-          const prevSet = history.get(nombre.toLowerCase().trim());
-          if (prevSet && prevSet.size >= karts.length) {
-            const displayName = originals.get(nombre.toLowerCase().trim()) || nombre;
-            cannotAvoidFor.push(displayName);
-          }
-        });
-        if (cannotAvoidFor.length > 0) {
-          const names = cannotAvoidFor.join(", ");
-          if (!confirm(`No hay suficientes karts distintos para evitar repetir con: ${names}. ¿Deseas continuar permitiendo repeticiones?`)) {
-            return;
-          }
-        } else {
-          // No obvious single-person blockage, but global perfect matching still might be impossible due to conflicts across people.
-          if (!confirm("No ha sido posible encontrar una asignacion global que evite todas las repeticiones")){
-            return;
-          }
-        }
-      }
-
-      // We'll assign unique karts for this draw.
-      let availableKarts = shuffle(karts.slice());
-
-      const fadeUpDuration = 600;
-      const fadeUpDelayPerItem = 150;
-      const delayAfterNames = 2000;
-
-      const kartLists = [];
-
-      // For deterministic but fair assignment:
-      // - If perfectMapping exists, use it (guaranteed unique and avoids repeats).
-      // - Otherwise fallback to greedy: iterate nombres in order and pick first available kart not in their history.
-      nombres.forEach((nombre, i) => {
-        const card = document.createElement("div");
-        card.className = "card fade-up";
-        card.style.animationDelay = `${i * fadeUpDelayPerItem}ms`;
-
-        const nombreEl = document.createElement("div");
-        nombreEl.className = "nombre";
-        nombreEl.textContent = nombre;
-
-        const slot = document.createElement("div");
-        slot.className = "kart-slot";
-
-        const kartList = document.createElement("div");
-        kartList.className = "kart-list";
-
-        // Determine kartAsignado
-        let kartAsignado = null;
-
-        if (perfectMapping && Object.prototype.hasOwnProperty.call(perfectMapping, nombre)) {
-          // Use mapping result
-          kartAsignado = perfectMapping[nombre];
-          // remove from availableKarts if present so fallback logic behaves consistently
-          const idx = availableKarts.indexOf(kartAsignado);
-          if (idx !== -1) availableKarts.splice(idx, 1);
-        } else {
-          // Greedy fallback
-          const prevSet = history.get(nombre.toLowerCase().trim());
-          if (availableKarts.length === 0) {
-            console.warn("No quedan karts disponibles.");
-          } else {
-            for (let j = 0; j < availableKarts.length; j++) {
-              const candidate = availableKarts[j];
-              const candidateNorm = candidate.trim().toLowerCase();
-              if (!prevSet || !prevSet.has(candidateNorm)) {
-                kartAsignado = candidate;
-                availableKarts.splice(j, 1);
-                break;
-              }
-            }
-            // If we couldn't find a kart that avoids repeat (and no perfectMapping existed), just take the first available
-            if (!kartAsignado) {
-              kartAsignado = availableKarts.shift();
-              console.warn(`No fue posible evitar repetir kart para ${nombre}. Se asigna ${kartAsignado} igualmente.`);
-            }
-          }
-        }
-
-        // Guarda la asignación para el botón de copiar historial
-        lastAssignments.push({ name: nombre, kart: kartAsignado });
-
-        console.log(`Corredor: ${nombre} — Kart asignado: ${kartAsignado}`);
-
-        const listaAnimada = crearListaAnimada(karts, kartAsignado);
-
-        listaAnimada.forEach((kart) => {
-          const item = document.createElement("div");
-          item.textContent = kart ? `🏎️ ${kart} 🏎️` : "";
-          kartList.appendChild(item);
-        });
-
-        slot.appendChild(kartList);
-        card.appendChild(nombreEl);
-        card.appendChild(slot);
-        grid.appendChild(card);
-
-        kartLists.push({ card, kartList, index: i });
-      });
-
-      window.scrollTo({
-        top: document.body.scrollHeight,
-        behavior: "smooth"
-      });
-
-      const totalFadeUpTime = nombres.length * fadeUpDelayPerItem + fadeUpDuration + delayAfterNames;
-
-      setTimeout(() => {
-        kartLists.forEach(({ card }) => card.classList.add("name-up"));
-
-        // Animación dinámica del scroll vertical en kartList
-        const animDuration = 4000;
-        kartLists.forEach(({ kartList }) => {
-          const itemsCount = kartList.children.length;
-          const itemHeight = kartList.children[0]?.offsetHeight || 24; // fallback en px
-
-          const finalTop = -itemHeight * (itemsCount - 1);
-
-          kartList.animate(
-            [
-              { top: "0px" },
-              { top: `${finalTop}px` }
-            ],
-            {
-              duration: animDuration,
-              easing: "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-              fill: "forwards"
-            }
-          );
-        });
-      }, totalFadeUpTime);
-    }
-
-    // Copia las últimas asignaciones al textarea 'historial'
-    copyHistBtn.addEventListener('click', () => {
-      if (!lastAssignments || lastAssignments.length === 0) {
-        alert('No hay asignaciones recientes. Haz clic en "Sortear" primero.');
-        return;
-      }
-      // Formato: Nombre: kart  (una asignación por línea)
-      const lines = lastAssignments.map(a => `${a.name}: ${a.kart}`);
-      document.getElementById('historial').value = lines.join('\n');
-      // feedback visual
-      alert('Historial actualizado con las asignaciones actuales.');
-    });
-
-    // Botón para limpiar historial con confirmación
-    clearHistBtn.addEventListener('click', () => {
-      const current = document.getElementById('historial').value;
-      if (!current) {
-        alert('El historial ya está vacío.');
-        return;
-      }
-      if (confirm('¿Seguro que quieres limpiar el historial? Esta acción eliminará todo el contenido del textarea.')) {
-        document.getElementById('historial').value = '';
-        alert('Historial limpiado.');
-      }
-    });
-
-    boton.addEventListener("click", () => {
-      boton.disabled = true;
-      try {
-        sortear();
-      } finally {
-        // small delay to avoid accidental double-click interfering with UI
-        setTimeout(() => {
-          boton.disabled = false;
-        }, 250);
-      }
-    });
-  </script>
 </body>
 </html>
