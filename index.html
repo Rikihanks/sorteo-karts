@@ -44,12 +44,21 @@
       text-transform: uppercase;
       letter-spacing: 2px;
       margin-bottom: 2rem;
-      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-      background: linear-gradient(to right, #fff, #94a3b8);
+      
+      /* CAMBIO CLAVE: Degradado de Blanco Puro a Azul Hielo muy claro */
+      background: linear-gradient(180deg, #ffffff 20%, #bae6fd 100%);
+      
+      /* Esto recorta el fondo con la forma del texto */
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-    }
+      background-clip: text;
+      color: transparent; /* Fallback */
 
+      /* TRUCO PARA IPHONE: Usar filter drop-shadow en lugar de text-shadow */
+      /* Esto crea un resplandor detrás del texto transparente */
+      filter: drop-shadow(0 0 5px rgba(59, 130, 246, 0.6)) 
+              drop-shadow(0 4px 4px rgba(0, 0, 0, 0.5));
+    }
     /* Layout Containers */
     .container {
       max-width: 900px;
@@ -320,4 +329,5 @@
 
 </body>
 </html>
+
 
